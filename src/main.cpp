@@ -1,11 +1,11 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <DateTime.h>
+#include "DateTimeMS.h"
 #include "EspMQTTClient.h"
 #include <ArduinoJson.h>
 #include "CredentialSetting.h"
 
-//#define debug
+#define debug
 
 #define DEVICENAME "TestOldData"
 #define SWVersion "V1.0"
@@ -86,8 +86,7 @@ void onConnectionEstablished()
 // -----------------------------------------------------------------
 String getStringTimeWithMS() {
   String strTime = "";
-  strTime += DateTime.now();
-  strTime += "000";
+  strTime += DateTimeMS.osTimeMS();
   return strTime;
 }
 

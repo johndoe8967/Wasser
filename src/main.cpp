@@ -14,8 +14,6 @@ String deviceName = DEVICENAME;
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
-#define MQTT
-#ifdef MQTT
 EspMQTTClient MQTTClient(
   ssid,
   password,
@@ -25,29 +23,24 @@ EspMQTTClient MQTTClient(
   deviceName.c_str(),  // Client name that uniquely identify your device
   MQTTPort           // The MQTT port, default to 1883
 );
-#endif
 
 unsigned long UpdateIntervall = 5000;    // 1 minute Update
-unsigned long myTime = 0;
-bool connected = false;                   // connection established and all services initialiced?
-bool sendValid = false;                   // new data available to send?
-String message;                           // will contain the http message to send into cloud
+unsigned long nextUpdateTime = 0;
+unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
+bool connected = false;                   // connection established and all services initialiced?
 
 
 // -----------------------------------------------------------------
 // initialise the device at the beginning
 // -----------------------------------------------------------------
 void setup() {
-  int cnt = 0;
-  myTime = millis();
-
-  Serial.begin(9600);
+  nextUpdateTime = getNextUpdateTime();
+  Serial.begin(115200);
   Serial.println("Booting");
 
   //  MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
   MQTTClient.enableLastWillMessage("TestClient/lastwill", "I am going offline");  // You can activate the retain flag by setting the third parameter to true
-
 }
 
 // -----------------------------------------------------------------
@@ -85,7 +78,7 @@ String getStringTimeWithMS() {
 // send Data to Cloud (ThingSpeak and MQTT)
 // -----------------------------------------------------------------
 void sendNewData() {
-  String requestUrl;
+  String message;                           // will contain the http message to send into cloud
 
   // Publish a message to "mytopic/test"
   message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Test\",\"Value\":";
@@ -97,28 +90,26 @@ void sendNewData() {
   Serial.println("...Sent");
 }
 
+
 // -----------------------------------------------------------------
 // Loop
 // -----------------------------------------------------------------
-String inputString = "";         // a String to hold incoming data
-bool stringComplete = false;  // whether the string is complete
 void loop() {
   MQTTClient.loop();          // Handle MQTT
 
   if (connected) {
 
     // test if time is still valid
-    // set time zone to UTC
-
     if (!DateTime.isTimeValid()) {
       DateTime.begin(/* timeout param */);
     }
 
-    if (millis() > myTime)
+    if (millis() > nextUpdateTime)
     {
       Serial.print("Send");
       sendNewData();
-      myTime = millis() + UpdateIntervall;
+      
+      nextUpdateTime = getNextUpdateTime();
     }
   }
 }

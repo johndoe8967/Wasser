@@ -71,7 +71,7 @@ void IRAM_ATTR measureSensor(){
 void setup() {
   //init absolut time variables
   nextUpdateTime = getNextUpdateTime();
-  lastChangeTime = millis()
+  lastChangeTime = millis();
 
   //init serial port for debug
   Serial.begin(115200);

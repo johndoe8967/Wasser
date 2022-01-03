@@ -7,6 +7,8 @@
 
 //#define debug
 
+#define SENSORINPUT 1
+
 #define DEVICENAME "TestOldData"
 #define SWVersion "V1.0"
 String deviceName = DEVICENAME;
@@ -47,6 +49,19 @@ unsigned long UpdateIntervall = 5000;    // 1 minute Update
 unsigned long nextUpdateTime = 0;
 unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
+unsigned long waterCounter = 0;
+unsigned long timeSinceLastChange = 0;
+unsigned long lastChangeTime = 0;
+void measureSensor(){
+  waterCounter++;
+
+  unsigned long actTime = millis();
+  timeSinceLastChange = lastChangeTime - actTime;
+  lastChangeTime = actTime;
+
+  Serial.print("Stamp(ms): ");
+  Serial.println(actTime);
+}
 
 // -----------------------------------------------------------------
 // initialise the device at the beginning
@@ -55,6 +70,9 @@ void setup() {
   nextUpdateTime = getNextUpdateTime();
   Serial.begin(115200);
   Serial.println("Booting");
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(SENSORINPUT, INPUT);
+  attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
 
 #ifdef debug
   MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
@@ -98,8 +116,8 @@ void sendNewData() {
   String message;                           // will contain the http message to send into cloud
 
   // Publish a message to "mytopic/test"
-  message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Test\",\"Value\":";
-  message += 1.0;
+  message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Water\",\"ChangeCounter\":";
+  message += waterCounter;
   message += ",\"time\":";
   message += getStringTimeWithMS();
   message += "}";

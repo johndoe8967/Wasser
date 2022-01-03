@@ -6,6 +6,8 @@
 #include <ArduinoJson.h>
 #include "CredentialSetting.h"
 
+//#define debug
+
 #define DEVICENAME "TestOldData"
 #define SWVersion "V1.0"
 String deviceName = DEVICENAME;
@@ -55,7 +57,9 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Booting");
 
-  //  MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
+#ifdef debug
+  MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
+#endif
   MQTTClient.enableLastWillMessage("TestClient/lastwill", "I am going offline");  // You can activate the retain flag by setting the third parameter to true
 }
 
@@ -101,7 +105,6 @@ void sendNewData() {
   message += getStringTimeWithMS();
   message += "}";
   MQTTClient.publish("sensors", message); // You can activate the retain flag by setting the third parameter to true
-  Serial.println("...Sent");
 }
 
 
@@ -117,9 +120,7 @@ void loop() {
     if (!DateTime.isTimeValid()) {
       DateTime.begin(/* timeout param */);
     } else if (millis() > nextUpdateTime) {
-      Serial.print("Send");
-      sendNewData();
-      
+      sendNewData();      
       nextUpdateTime = getNextUpdateTime();
     }
   }

@@ -130,8 +130,8 @@ void loop() {
     if (!DateTime.isTimeValid()) {
       DateTime.begin(/* timeout param */);
     } else if (millis() > nextUpdateTime) {
+      nextUpdateTime += UpdateIntervall;
       sendNewData();      
-      nextUpdateTime = getNextUpdateTime();
     }
   }
 }

@@ -11,9 +11,27 @@
 String deviceName = DEVICENAME;
 
 
+#ifndef STASSID 
+#define STASSID "..."
+#endif
+#ifndef STAPSK
+#define STAPSK "..."
+#endif
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
+#ifndef MQTTHostname
+#define MQTTHostname "mqtt.host.com"
+#endif
+#ifndef MQTTUser
+#define MQTTUser "username"
+#endif
+#ifndef MQTTPassword
+#define MQTTPassword "password"
+#endif
+#ifndef MQTTPort
+#define MQTTPort 1883
+#endif
 EspMQTTClient MQTTClient(
   ssid,
   password,
@@ -27,8 +45,6 @@ EspMQTTClient MQTTClient(
 unsigned long UpdateIntervall = 5000;    // 1 minute Update
 unsigned long nextUpdateTime = 0;
 unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
-
-bool connected = false;                   // connection established and all services initialiced?
 
 
 // -----------------------------------------------------------------
@@ -60,8 +76,6 @@ void onConnectionEstablished()
       MQTTClient.publish("device/scan", deviceName.c_str());
     }
   });
-
-  connected = true;
 }
 
 // -----------------------------------------------------------------
@@ -97,15 +111,12 @@ void sendNewData() {
 void loop() {
   MQTTClient.loop();          // Handle MQTT
 
-  if (connected) {
+  if (MQTTClient.isConnected()) {
 
     // test if time is still valid
     if (!DateTime.isTimeValid()) {
       DateTime.begin(/* timeout param */);
-    }
-
-    if (millis() > nextUpdateTime)
-    {
+    } else if (millis() > nextUpdateTime) {
       Serial.print("Send");
       sendNewData();
       

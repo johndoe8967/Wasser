@@ -3,7 +3,9 @@
 #include "DateTimeMS.h"
 #include "EspMQTTClient.h"
 #include <ArduinoJson.h>
+
 #include "CredentialSetting.h"
+#include "CredentialSettingsDefault.h"
 
 #include "Version.h"
 
@@ -11,32 +13,13 @@
 
 #define SENSORINPUT 3
 
-#define DEVICENAME "TestOldData"
 #define SWVersion "V" VERSION
+#define DEVICENAME "TestOldData"
 String deviceName = DEVICENAME;
 
-
-#ifndef STASSID 
-#define STASSID "..."
-#endif
-#ifndef STAPSK
-#define STAPSK "..."
-#endif
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
-#ifndef MQTTHostname
-#define MQTTHostname "mqtt.host.com"
-#endif
-#ifndef MQTTUser
-#define MQTTUser "username"
-#endif
-#ifndef MQTTPassword
-#define MQTTPassword "password"
-#endif
-#ifndef MQTTPort
-#define MQTTPort 1883
-#endif
 EspMQTTClient MQTTClient(
   ssid,
   password,
@@ -53,7 +36,7 @@ unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
 unsigned long waterCounter = 0;           // number of rising edges of the external sensor
 unsigned long timeSinceLastChange = 0;    // 
-unsigned long lastChangeTime = 0;
+unsigned long lastChangeTime = 0;         //
 
 // -----------------------------------------------------------------
 // Interrupt routine for externel Sensor input 

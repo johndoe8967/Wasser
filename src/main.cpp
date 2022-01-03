@@ -7,7 +7,7 @@
 
 //#define debug
 
-#define SENSORINPUT 1
+#define SENSORINPUT 3
 
 #define DEVICENAME "TestOldData"
 #define SWVersion "V1.0"
@@ -45,35 +45,44 @@ EspMQTTClient MQTTClient(
   MQTTPort           // The MQTT port, default to 1883
 );
 
-unsigned long UpdateIntervall = 5000;    // 1 minute Update
-unsigned long nextUpdateTime = 0;
+unsigned long UpdateIntervall = 5000;     // 5s update intervall
+unsigned long nextUpdateTime = 0;         // calculated time in millis for next update
 unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
-unsigned long waterCounter = 0;
-unsigned long timeSinceLastChange = 0;
+unsigned long waterCounter = 0;           // number of rising edges of the external sensor
+unsigned long timeSinceLastChange = 0;    // 
 unsigned long lastChangeTime = 0;
-void measureSensor(){
-  waterCounter++;
 
+// -----------------------------------------------------------------
+// Interrupt routine for externel Sensor input 
+// -----------------------------------------------------------------
+void IRAM_ATTR measureSensor(){
   unsigned long actTime = millis();
+
   timeSinceLastChange = lastChangeTime - actTime;
   lastChangeTime = actTime;
 
-  Serial.print("Stamp(ms): ");
-  Serial.println(actTime);
+  waterCounter++;
 }
 
 // -----------------------------------------------------------------
 // initialise the device at the beginning
 // -----------------------------------------------------------------
 void setup() {
+  //init absolut time variables
   nextUpdateTime = getNextUpdateTime();
+  lastChangeTime = millis()
+
+  //init serial port for debug
   Serial.begin(115200);
   Serial.println("Booting");
+
+  // init digital IOs
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SENSORINPUT, INPUT);
   attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
 
+  // init MQTT client
 #ifdef debug
   MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
 #endif

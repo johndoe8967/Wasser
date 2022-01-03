@@ -5,10 +5,12 @@
 #include <ArduinoJson.h>
 #include "CredentialSetting.h"
 
+#include "Version.h"
+
 #define debug
 
 #define DEVICENAME "TestOldData"
-#define SWVersion "V1.0"
+#define SWVersion "V" VERSION
 String deviceName = DEVICENAME;
 
 

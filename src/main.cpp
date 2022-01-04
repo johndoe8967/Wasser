@@ -34,6 +34,7 @@ unsigned long UpdateIntervall = 5000; // 5s update intervall
 unsigned long nextUpdateTime = 0;     // calculated time in millis for next update
 
 unsigned long waterCounter = 0;     // number of rising edges of the external sensor
+unsigned long actTime = 10; 
 unsigned long lastDuration = 0;     // duration of the last pulse measured
 unsigned long lastChangeTime = 0;   // timestamp of the last rising sensor
 unsigned int impulsesPerLiter = 16; // number of impulses per liter
@@ -48,12 +49,10 @@ float flowRate = 0.0;               // flow rate calculated from duration per pu
 */
 void IRAM_ATTR measureSensor()
 {
-  unsigned long actTime = millis();
-
-  lastChangeTime = actTime;
+  actTime = millis();
   lastDuration = actTime - lastChangeTime;
-  flowRate = impulsesPerLiter / lastDuration * 1000.0;
-
+  lastChangeTime = actTime;
+  flowRate = (float)impulsesPerLiter / (float)lastDuration * 1000.0;
   waterCounter++;
 }
 
@@ -122,6 +121,8 @@ bool sendNewData()
   message += (millis() - lastChangeTime);
   message += ",\"lastDuration\":";
   message += lastDuration;
+  message += ",\"flowRate\":";
+  message += flowRate;
   message += ",\"time\":";
   message += DateTimeMS.osTimeMS();
   message += "}";

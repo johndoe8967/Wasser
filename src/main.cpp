@@ -34,12 +34,16 @@ unsigned long UpdateIntervall = 5000; // 5s update intervall
 unsigned long nextUpdateTime = 0;     // calculated time in millis for next update
 
 unsigned long waterCounter = 0;   // number of rising edges of the external sensor
-unsigned long lastDuration = 0;   //
-unsigned long lastChangeTime = 0; //
+unsigned long lastDuration = 0;   // duration of the last pulse measured
+unsigned long lastChangeTime = 0; // timestamp of the last rising sensor
 
-// -----------------------------------------------------------------
-// Interrupt routine for externel Sensor input
-// -----------------------------------------------------------------
+/**
+* @brief Interrupt routine for externel Sensor input
+* 
+* measure duration of last puls
+* measure timestamp of rising ping
+* count rising pin
+*/
 void IRAM_ATTR measureSensor()
 {
   unsigned long actTime = millis();
@@ -50,9 +54,10 @@ void IRAM_ATTR measureSensor()
   waterCounter++;
 }
 
-// -----------------------------------------------------------------
-// initialise the device at the beginning
-// -----------------------------------------------------------------
+/**
+ * @brief Arduino setup function
+ * initialise the device at the beginning
+ */
 void setup()
 {
   //init absolut time variables
@@ -76,9 +81,10 @@ void setup()
   MQTTClient.enableLastWillMessage("TestClient/lastwill", "I am going offline"); // You can activate the retain flag by setting the third parameter to true
 }
 
-// -----------------------------------------------------------------
-// This function will setup all services and is called once everything is connected (Wifi and MQTT)
-// -----------------------------------------------------------------
+/**
+ * @brief resume setup after WIFI connection
+ * This function will setup all services and is called once everything is connected (Wifi and MQTT)
+ */
 void onConnectionEstablished()
 {
   Serial.println("onConn");
@@ -97,20 +103,12 @@ void onConnectionEstablished()
                        });
 }
 
-// -----------------------------------------------------------------
-// get Time String with fake ms (000)
-// -----------------------------------------------------------------
-String getStringTimeWithMS()
-{
-  String strTime = "";
-  strTime += DateTimeMS.osTimeMS();
-  return strTime;
-}
-
-// -----------------------------------------------------------------
-// send Data to Cloud (ThingSpeak and MQTT)
-// -----------------------------------------------------------------
-void sendNewData()
+/**
+ * @brief send Data to Cloud (MQTT)
+ * 
+ * @return true for successful publishing
+ */
+bool sendNewData()
 {
   String message; // will contain the http message to send into cloud
 
@@ -122,14 +120,15 @@ void sendNewData()
   message += ",\"lastDuration\":";
   message += lastDuration;
   message += ",\"time\":";
-  message += getStringTimeWithMS();
+  message += DateTimeMS.osTimeMS();
   message += "}";
-  MQTTClient.publish("sensors", message); // You can activate the retain flag by setting the third parameter to true
+  return MQTTClient.publish("sensors", message); 
 }
 
-// -----------------------------------------------------------------
-// Loop
-// -----------------------------------------------------------------
+/**
+ * @brief Arduino loop
+ * 
+ */
 void loop()
 {
   MQTTClient.loop(); // Handle MQTT

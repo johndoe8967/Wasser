@@ -36,9 +36,12 @@ unsigned long nextUpdateTime = 0;     // calculated time in millis for next upda
 unsigned long waterCounter = 0;     // number of rising edges of the external sensor
 unsigned long actTime = 10; 
 unsigned long lastDuration = 0;     // duration of the last pulse measured
+unsigned long actDuration = 0;
 unsigned long lastChangeTime = 0;   // timestamp of the last rising sensor
 unsigned int impulsesPerLiter = 16; // number of impulses per liter
 float flowRate = 0.0;               // flow rate calculated from duration per puls in l/s
+float flowRateFiltered = 0.0;
+float filter = 0.9;
 
 /**
 * @brief Interrupt routine for externel Sensor input
@@ -118,11 +121,11 @@ bool sendNewData()
   message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Water\",\"ChangeCounter\":";
   message += waterCounter;
   message += ",\"timeSinceChange\":";
-  message += (millis() - lastChangeTime);
+  message += actDuration;
   message += ",\"lastDuration\":";
   message += lastDuration;
   message += ",\"flowRate\":";
-  message += flowRate;
+  message += flowRateFiltered;
   message += ",\"time\":";
   message += DateTimeMS.osTimeMS();
   message += "}";
@@ -147,6 +150,11 @@ void loop()
     }
     else if (millis() > nextUpdateTime)
     {
+      actDuration = (millis() - lastChangeTime);
+      if (actDuration > lastDuration) {
+        flowRate = (float)impulsesPerLiter / (float)actDuration * 1000.0;
+      } 
+      flowRateFiltered = flowRateFiltered * filter + flowRate * (1-filter);
       nextUpdateTime += UpdateIntervall;
       sendNewData();
     }

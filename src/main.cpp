@@ -44,7 +44,7 @@ unsigned long lastChangeTime = 0;         //
 void IRAM_ATTR measureSensor(){
   unsigned long actTime = millis();
 
-  timeSinceLastChange = lastChangeTime - actTime;
+  timeSinceLastChange = actTime - lastChangeTime;
   lastChangeTime = actTime;
 
   waterCounter++;
@@ -111,6 +111,8 @@ void sendNewData() {
   // Publish a message to "mytopic/test"
   message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Water\",\"ChangeCounter\":";
   message += waterCounter;
+  message += ",\"timeSinceChange\":";
+  message += (millis() - lastChangeTime);
   message += ",\"time\":";
   message += getStringTimeWithMS();
   message += "}";

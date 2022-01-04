@@ -35,7 +35,7 @@ unsigned long nextUpdateTime = 0;         // calculated time in millis for next 
 unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
 unsigned long waterCounter = 0;           // number of rising edges of the external sensor
-unsigned long timeSinceLastChange = 0;    // 
+unsigned long lastDuration = 0;    // 
 unsigned long lastChangeTime = 0;         //
 
 // -----------------------------------------------------------------
@@ -44,7 +44,7 @@ unsigned long lastChangeTime = 0;         //
 void IRAM_ATTR measureSensor(){
   unsigned long actTime = millis();
 
-  timeSinceLastChange = actTime - lastChangeTime;
+  lastDuration = actTime - lastChangeTime;
   lastChangeTime = actTime;
 
   waterCounter++;
@@ -113,6 +113,8 @@ void sendNewData() {
   message += waterCounter;
   message += ",\"timeSinceChange\":";
   message += (millis() - lastChangeTime);
+  message += ",\"lastDuration\":";
+  message += lastDuration;
   message += ",\"time\":";
   message += getStringTimeWithMS();
   message += "}";

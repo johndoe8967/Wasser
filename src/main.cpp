@@ -11,7 +11,7 @@
 
 #define debug
 
-#define SENSORINPUT 3
+#define SENSORINPUT 0
 
 #define SWVersion "V" VERSION
 #define DEVICENAME "TestOldData"

@@ -33,9 +33,11 @@ EspMQTTClient MQTTClient(
 unsigned long UpdateIntervall = 5000; // 5s update intervall
 unsigned long nextUpdateTime = 0;     // calculated time in millis for next update
 
-unsigned long waterCounter = 0;   // number of rising edges of the external sensor
-unsigned long lastDuration = 0;   // duration of the last pulse measured
-unsigned long lastChangeTime = 0; // timestamp of the last rising sensor
+unsigned long waterCounter = 0;     // number of rising edges of the external sensor
+unsigned long lastDuration = 0;     // duration of the last pulse measured
+unsigned long lastChangeTime = 0;   // timestamp of the last rising sensor
+unsigned int impulsesPerLiter = 16; // number of impulses per liter
+float flowRate = 0.0;               // flow rate calculated from duration per puls in l/s
 
 /**
 * @brief Interrupt routine for externel Sensor input
@@ -48,8 +50,9 @@ void IRAM_ATTR measureSensor()
 {
   unsigned long actTime = millis();
 
-  lastDuration = actTime - lastChangeTime;
   lastChangeTime = actTime;
+  lastDuration = actTime - lastChangeTime;
+  flowRate = impulsesPerLiter / lastDuration * 1000.0;
 
   waterCounter++;
 }
@@ -122,7 +125,7 @@ bool sendNewData()
   message += ",\"time\":";
   message += DateTimeMS.osTimeMS();
   message += "}";
-  return MQTTClient.publish("sensors", message); 
+  return MQTTClient.publish("sensors", message);
 }
 
 /**

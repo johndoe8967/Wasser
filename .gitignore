@@ -6,3 +6,5 @@
 include/CredentialSetting.h
 desktop.ini
 .version_no_increment
+include/Version.h
+version

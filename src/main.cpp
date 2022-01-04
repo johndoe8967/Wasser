@@ -14,7 +14,7 @@
 #define SENSORINPUT 0
 
 #define SWVersion "V" VERSION
-#define DEVICENAME "TestOldData"
+#define DEVICENAME "Wasserwächter"
 String deviceName = DEVICENAME;
 
 const char *ssid = STASSID;

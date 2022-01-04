@@ -32,7 +32,6 @@ EspMQTTClient MQTTClient(
 
 unsigned long UpdateIntervall = 5000; // 5s update intervall
 unsigned long nextUpdateTime = 0;     // calculated time in millis for next update
-unsigned long getNextUpdateTime() { return millis() + UpdateIntervall; };
 
 unsigned long waterCounter = 0;   // number of rising edges of the external sensor
 unsigned long lastDuration = 0;   //
@@ -57,8 +56,9 @@ void IRAM_ATTR measureSensor()
 void setup()
 {
   //init absolut time variables
-  nextUpdateTime = getNextUpdateTime();
-  lastChangeTime = millis();
+  unsigned long actTime = millis();
+  nextUpdateTime = actTime + UpdateIntervall;
+  lastChangeTime = actTime;
 
   //init serial port for debug
   Serial.begin(115200);

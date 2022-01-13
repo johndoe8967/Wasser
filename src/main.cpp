@@ -3,6 +3,7 @@
 #include "DateTimeMS.h"
 #include "EspMQTTClient.h"
 #include <ArduinoJson.h>
+#include "ESP8266TimerInterrupt.h"
 
 #include "CredentialSetting.h"
 #include "CredentialSettingsDefault.h"
@@ -12,6 +13,15 @@
 #define debug
 
 #define SENSORINPUT 0
+#define SENSORANALOG A0
+#define MAXSAMPLES 32
+int sensorValues[MAXSAMPLES];    // Array to store samples from analog input pin
+int sensorValueIndex = 0;
+int postTrigger = MAXSAMPLES / 2;
+
+bool sampleStarted = false;
+#define TIMER_INTERVAL_MS        10
+ESP8266Timer ITimer;
 
 #define SWVersion "V" VERSION
 #define DEVICENAME "Wasserwächter"
@@ -52,12 +62,39 @@ float filter = 0.9;
 */
 void IRAM_ATTR measureSensor()
 {
+  sampleStarted = false;
   actTime = millis();
   lastDuration = actTime - lastChangeTime;
   lastChangeTime = actTime;
   flowRate = (float)impulsesPerLiter / (float)lastDuration * 1000.0;
   waterCounter++;
+#ifdef debug
+//  sensorValues[sensorValueIndex-1] = -1;
+#endif
 }
+
+/**
+ * @brief high speed sampling of analog signal 
+ * timer interrupt based sampling of the analog input
+ * stored in an sampling array with pre and post trigger. 
+ * pre trigger is filled when sampleStarted == true
+ * post trigger is filled after sampleStarted == false
+ */
+void IRAM_ATTR sampleAnalogSignal()
+{
+  if (sampleStarted || postTrigger!=0) {
+#ifdef debug
+    sensorValues[sensorValueIndex++] = sensorValueIndex;
+#else
+    sensorValues[sensorValueIndex++] = analogRead(SENSORANALOG);
+#endif
+    sensorValueIndex &= (MAXSAMPLES - 1);
+  } else {
+    if (postTrigger != 0) postTrigger--;
+  }
+}
+
+
 
 /**
  * @brief Arduino setup function
@@ -69,6 +106,7 @@ void setup()
   unsigned long actTime = millis();
   nextUpdateTime = actTime + UpdateIntervall;
   lastChangeTime = actTime;
+  sensorValueIndex = 0;
 
   //init serial port for debug
   Serial.begin(115200);
@@ -79,11 +117,21 @@ void setup()
   pinMode(SENSORINPUT, INPUT);
   attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
 
+  // attach timer interrupt for high speed analog signal sampling
+  if (ITimer.attachInterruptInterval(TIMER_INTERVAL_MS * 1000, sampleAnalogSignal))
+  {
+    Serial.println(F("Starting  ITimer OK")); 
+  }
+  else
+    Serial.println(F("Can't set ITimer correctly. Select another freq. or interval"));
+
+
   // init MQTT client
 #ifdef debug
   MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
 #endif
   MQTTClient.enableLastWillMessage("TestClient/lastwill", "I am going offline"); // You can activate the retain flag by setting the third parameter to true
+  MQTTClient.setMaxPacketSize(2500);
 }
 
 /**
@@ -113,8 +161,9 @@ void onConnectionEstablished()
  * 
  * @return true for successful publishing
  */
-bool sendNewData()
+bool sendNewData(uint64_t osTimeMS)
 {
+  bool sendOK = true;
   String message; // will contain the http message to send into cloud
 
   // Publish a message to "mytopic/test"
@@ -127,9 +176,34 @@ bool sendNewData()
   message += ",\"flowRate\":";
   message += flowRateFiltered;
   message += ",\"time\":";
-  message += DateTimeMS.osTimeMS();
+  message += osTimeMS;
   message += "}";
-  return MQTTClient.publish("sensors", message);
+  if (!MQTTClient.publish("sensors", message)) sendOK = false;
+
+  auto actTime = osTimeMS - (millis() - lastChangeTime);
+
+  if (sampleStarted == false) {
+    message = "[";
+    for (int i=0;i<MAXSAMPLES;i++) {
+      message += "{\"name\":\"" DEVICENAME "\",\"field\":\"Analog\"";
+      message += ",\"Value\":";
+      message += sensorValues[(sensorValueIndex + i) & (MAXSAMPLES-1)];
+      message += ",\"time\":";
+      message += actTime - (MAXSAMPLES/2 - i) * 10;
+      message += "}";
+      if (i< MAXSAMPLES-1){
+        message += ",";
+      }
+    }
+    message += "]";
+    Serial.print("Msg len:");
+    Serial.print(message.length());
+    if (!MQTTClient.publish("sensors", message)) sendOK = false;
+    sampleStarted = true;
+    postTrigger = MAXSAMPLES / 2;
+  }
+
+  return sendOK;
 }
 
 /**
@@ -156,7 +230,7 @@ void loop()
       } 
       flowRateFiltered = flowRateFiltered * filter + flowRate * (1-filter);
       nextUpdateTime += UpdateIntervall;
-      sendNewData();
+      sendNewData(DateTimeMS.osTimeMS());
     }
   }
 }

@@ -33,30 +33,30 @@ const char *password = STAPSK;
 EspMQTTClient MQTTClient(
     ssid,
     password,
-    MQTTHostname, // MQTT Broker server ip
+    MQTTHostname, // MQTT Broker server IP
     MQTTUser,
     MQTTPassword,
     deviceName.c_str(), // Client name that uniquely identify your device
     MQTTPort            // The MQTT port, default to 1883
 );
 
-unsigned long UpdateIntervall = 5000; // 5s update intervall
-unsigned long nextUpdateTime = 0;     // calculated time in millis for next update
+unsigned long UpdateIntervall = 5000; // 5s update interval
+unsigned long nextUpdateTime = 0;     // calculated time in milliseconds for next update
 
 unsigned long waterCounter = 0;     // number of rising edges of the external sensor
 unsigned long actTime = 10; 
 unsigned long lastDuration = 0;     // duration of the last pulse measured
 unsigned long actDuration = 0;
 unsigned long lastChangeTime = 0;   // timestamp of the last rising sensor
-unsigned int impulsesPerLiter = 16; // number of impulses per liter
-float flowRate = 0.0;               // flow rate calculated from duration per puls in l/s
+unsigned int impulsesPerLiter = 16; // number of impulses per Liter
+float flowRate = 0.0;               // flow rate calculated from duration per pulse in l/s
 float flowRateFiltered = 0.0;
 float filter = 0.9;
 
 /**
-* @brief Interrupt routine for externel Sensor input
+* @brief Interrupt routine for external Sensor input
 * 
-* measure duration of last puls
+* measure duration of last pulse
 * measure timestamp of rising ping
 * count rising pin
 */
@@ -98,17 +98,17 @@ void IRAM_ATTR sampleAnalogSignal()
 
 /**
  * @brief Arduino setup function
- * initialise the device at the beginning
+ * initialize the device at the beginning
  */
 void setup()
 {
-  //init absolut time variables
+  //initialize absolute time variables
   unsigned long actTime = millis();
   nextUpdateTime = actTime + UpdateIntervall;
   lastChangeTime = actTime;
   sensorValueIndex = 0;
 
-  //init serial port for debug
+  //initialize serial port for debug
   Serial.begin(115200);
   Serial.println("Booting");
 
@@ -196,8 +196,10 @@ bool sendNewData(uint64_t osTimeMS)
       }
     }
     message += "]";
+#ifdef debug
     Serial.print("Msg len:");
-    Serial.print(message.length());
+    Serial.println(message.length());
+#endif
     if (!MQTTClient.publish("sensors", message)) sendOK = false;
     sampleStarted = true;
     postTrigger = MAXSAMPLES / 2;

@@ -12,58 +12,72 @@
 
 #define debug
 
-#define SENSORINPUT 0
-#define SENSORANALOG A0
-#define MAXSAMPLES 32
-int sensorValues[MAXSAMPLES];    // Array to store samples from analog input pin
-int sensorValueIndex = 0;
-int postTrigger = MAXSAMPLES / 2;
-
-bool sampleStarted = false;
-#define TIMER_INTERVAL_MS        10
-ESP8266Timer ITimer;
-
-#define SWVersion "V" VERSION
-#define DEVICENAME "Wasserwächter"
+#define DEVICENAME "Wasserwächter" 
 String deviceName = DEVICENAME;
 
 const char *ssid = STASSID;
 const char *password = STAPSK;
 
+#define SENSORINPUT 0             ///< pin number for digital sensor input
+#define SENSORANALOG A0           ///< pin number for analog sensor input
+#define MAXSAMPLES 32             ///< array size for analog samples
+int sensorValues[MAXSAMPLES];     ///< Array to store samples from analog input pin
+int sensorValueIndex = 0;         ///< array index pointing to the next free element
+int postTrigger = MAXSAMPLES / 2; ///< number of post trigger samples
+
+bool sampleStarted = false;       ///< signal to start sampling analog signal, set after sending data
+#define TIMER_INTERVAL_MS 10      ///< sampling timer interval
+ESP8266Timer ITimer;              ///< HW timer from ESP8266
+
+/**
+ * @brief MQTT client managing all network functions incl. WIFI connection
+ * 
+ * @param wifiSsID WIFI SSID to connect with
+ * @param wifiPassword WIFI password to connect with
+ * @param mqttServerIp MQTT Broker server IP
+ * @param mqttUsername MQTT username
+ * @param mqttPassword  MQTT password
+ * @param mqttClientName Client name that uniquely identify your device
+ * @param mqttServerPort MQTT port
+ */
 EspMQTTClient MQTTClient(
-    ssid,
-    password,
-    MQTTHostname, // MQTT Broker server IP
+    ssid,      
+    password,           
+    MQTTHostname,
     MQTTUser,
-    MQTTPassword,
-    deviceName.c_str(), // Client name that uniquely identify your device
-    MQTTPort            // The MQTT port, default to 1883
+    MQTTPassword,       
+    deviceName.c_str(), 
+    MQTTPort            
 );
 
-unsigned long UpdateIntervall = 5000; // 5s update interval
-unsigned long nextUpdateTime = 0;     // calculated time in milliseconds for next update
+unsigned long UpdateIntervall = 5000; ///< update interval, measurement will be sent after each interval
+unsigned long nextUpdateTime = 0;     ///< calculated absolute time in milliseconds for next update
 
-unsigned long waterCounter = 0;     // number of rising edges of the external sensor
-unsigned long actTime = 10; 
-unsigned long lastDuration = 0;     // duration of the last pulse measured
-unsigned long actDuration = 0;
-unsigned long lastChangeTime = 0;   // timestamp of the last rising sensor
-unsigned int impulsesPerLiter = 16; // number of impulses per Liter
-float flowRate = 0.0;               // flow rate calculated from duration per pulse in l/s
-float flowRateFiltered = 0.0;
-float filter = 0.9;
+unsigned long waterCounter = 0;     ///< number of rising edges of the external sensor
+unsigned long lastDuration = 0;     ///< duration of the last measured pulse
+unsigned long actDuration = 0;      ///< dynamically calculated duration 
+                                    /**< if the actual puls is longer than the last duration \n 
+                                     * this variable dynamically increases its value even there was no complete pulse
+                                    */
+
+unsigned long lastChangeTime = 0;   ///< absolute timestamp of the last rising edge of the sensor pulse
+unsigned int impulsesPerLiter = 16; ///< number of impulses per Liter
+float flowRate = 0.0;               ///< flow rate calculated from \p impulsesPerLiter and \p lastDuration in l/s
+float flowRateFiltered = 0.0;       ///< filter to show decay even without input pulse
+float filter = 0.9;                 ///< filter value (always < 1)
 
 /**
 * @brief Interrupt routine for external Sensor input
 * 
-* measure duration of last pulse
-* measure timestamp of rising ping
+* measure duration of last pulse \n 
+* measure timestamp of rising ping \n 
 * count rising pin
 */
 void IRAM_ATTR measureSensor()
 {
+
   sampleStarted = false;
-  actTime = millis();
+  auto actTime = millis();
   lastDuration = actTime - lastChangeTime;
   lastChangeTime = actTime;
   flowRate = (float)impulsesPerLiter / (float)lastDuration * 1000.0;
@@ -74,10 +88,10 @@ void IRAM_ATTR measureSensor()
 }
 
 /**
- * @brief high speed sampling of analog signal 
- * timer interrupt based sampling of the analog input
- * stored in an sampling array with pre and post trigger. 
- * pre trigger is filled when sampleStarted == true
+ * @brief high speed sampling of analog signal \n 
+ * timer interrupt based sampling of the analog input value
+ * stored in an sampling array with pre and post trigger. \n 
+ * pre trigger is filled when sampleStarted == true \n 
  * post trigger is filled after sampleStarted == false
  */
 void IRAM_ATTR sampleAnalogSignal()
@@ -210,7 +224,7 @@ bool sendNewData(uint64_t osTimeMS)
 
 /**
  * @brief Arduino loop
- * 
+ *  
  */
 void loop()
 {

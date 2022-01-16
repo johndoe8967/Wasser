@@ -8,3 +8,13 @@ desktop.ini
 .version_no_increment
 include/Version.h
 version
+Docu.aux
+Docu.fdb_latexmk
+Docu.fls
+Docu.log
+Docu.out
+Docu.synctex.gz
+Docu.toc
+html/
+latex/
+Docu.pdf

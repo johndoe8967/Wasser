@@ -10,7 +10,7 @@
 
 #include "Version.h"
 
-#define debug
+//#define debug
 
 #define DEVICENAME "Wasserwächter" 
 String deviceName = DEVICENAME;
@@ -83,7 +83,7 @@ void IRAM_ATTR measureSensor()
   flowRate = (float)impulsesPerLiter / (float)lastDuration * 1000.0;
   waterCounter++;
 #ifdef debug
-//  sensorValues[sensorValueIndex-1] = -1;
+  sensorValues[sensorValueIndex-1] = -1;
 #endif
 }
 
@@ -108,8 +108,6 @@ void IRAM_ATTR sampleAnalogSignal()
   }
 }
 
-
-
 /**
  * @brief Arduino setup function
  * initialize the device at the beginning
@@ -126,7 +124,7 @@ void setup()
   Serial.begin(115200);
   Serial.println("Booting");
 
-  // init digital IOs
+  // initialize digital IOs
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SENSORINPUT, INPUT);
   attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
@@ -140,7 +138,7 @@ void setup()
     Serial.println(F("Can't set ITimer correctly. Select another freq. or interval"));
 
 
-  // init MQTT client
+  // initialize MQTT client
 #ifdef debug
   MQTTClient.enableDebuggingMessages(); // Enable debugging messages sent to serial output
 #endif
@@ -173,14 +171,15 @@ void onConnectionEstablished()
 /**
  * @brief send Data to Cloud (MQTT)
  * 
+ * create 
  * @return true for successful publishing
  */
 bool sendNewData(uint64_t osTimeMS)
 {
-  bool sendOK = true;
-  String message; // will contain the http message to send into cloud
+  bool sendOK = true;                     // assume all is ok, will be changed if fault occures
+  String message;                         // will contain the http message to send into cloud
 
-  // Publish a message to "mytopic/test"
+  // create JSON message 
   message = "{\"name\":\"" DEVICENAME "\",\"field\":\"Water\",\"ChangeCounter\":";
   message += waterCounter;
   message += ",\"timeSinceChange\":";
@@ -192,26 +191,34 @@ bool sendNewData(uint64_t osTimeMS)
   message += ",\"time\":";
   message += osTimeMS;
   message += "}";
+
+  // send message to #sensors topic 
   if (!MQTTClient.publish("sensors", message)) sendOK = false;
 
-  auto actTime = osTimeMS - (millis() - lastChangeTime);
-
+  //check if analog sampling is finished
   if (sampleStarted == false) {
-    message = "[";
-    for (int i=0;i<MAXSAMPLES;i++) {
+    // calculate accurate timestampe of pulse
+    auto actTime = osTimeMS - (millis() - lastChangeTime);
+
+    // create JSCON array with multiple values from analog samples
+    message = "[";                    // open JSON array
+    for (int i=0;i<MAXSAMPLES;i++) {  // loop over all array entries
+
       message += "{\"name\":\"" DEVICENAME "\",\"field\":\"Analog\"";
       message += ",\"Value\":";
       message += sensorValues[(sensorValueIndex + i) & (MAXSAMPLES-1)];
       message += ",\"time\":";
       message += actTime - (MAXSAMPLES/2 - i) * 10;
       message += "}";
-      if (i< MAXSAMPLES-1){
+
+      if (i< MAXSAMPLES-1){       // last value has no ","
         message += ",";
       }
     }
-    message += "]";
+    message += "]";                   // close JSON array
+    
 #ifdef debug
-    Serial.print("Msg len:");
+    Serial.print("Msg length:");
     Serial.println(message.length());
 #endif
     if (!MQTTClient.publish("sensors", message)) sendOK = false;
@@ -225,28 +232,31 @@ bool sendNewData(uint64_t osTimeMS)
 /**
  * @brief Arduino loop
  *  
+ * check WIFI connectivity 
+ * check valid NTP time 
+ * check plausibility of puls duration and flowrate
+ * filter flowrate
+ * send data to MQTT broker
+ * calculate next update timestamp
  */
 void loop()
 {
   MQTTClient.loop(); // Handle MQTT
 
-  if (MQTTClient.isConnected())
+  if (MQTTClient.isConnected()) // process loop only of MQTT client is connected
   {
 
-    // test if time is still valid
-    if (!DateTime.isTimeValid())
+    if (!DateTime.isTimeValid()) { DateTime.begin(/* timeout param */);}    // connect to NTP time if invalid
+    else if (millis() > nextUpdateTime)                                     // process data if update time reached
     {
-      DateTime.begin(/* timeout param */);
-    }
-    else if (millis() > nextUpdateTime)
-    {
-      actDuration = (millis() - lastChangeTime);
-      if (actDuration > lastDuration) {
-        flowRate = (float)impulsesPerLiter / (float)actDuration * 1000.0;
+      actDuration = (millis() - lastChangeTime);                            // calculate time since last pulse
+      if (actDuration > lastDuration)                                       // check if flowRate is still plausible 
+      {
+        flowRate = (float)impulsesPerLiter / (float)actDuration * 1000.0;   // recalculate a better flowRate
       } 
-      flowRateFiltered = flowRateFiltered * filter + flowRate * (1-filter);
-      nextUpdateTime += UpdateIntervall;
-      sendNewData(DateTimeMS.osTimeMS());
+      flowRateFiltered = flowRateFiltered * filter + flowRate * (1-filter); // filter flowRate
+      sendNewData(DateTimeMS.osTimeMS());                                   // send Data 
+      nextUpdateTime += UpdateIntervall;                                    // calculate next absolute update time
     }
   }
 }

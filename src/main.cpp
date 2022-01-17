@@ -10,9 +10,9 @@
 
 #include "Version.h"
 
-//#define debug
+#define debug
 
-#define DEVICENAME "Wasserwächter" 
+#define DEVICENAME "Wasser" 
 String deviceName = DEVICENAME;
 
 const char *ssid = STASSID;
@@ -125,7 +125,7 @@ void setup()
   Serial.println("Booting");
 
   // initialize digital IOs
-  pinMode(LED_BUILTIN, OUTPUT);
+  //pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SENSORINPUT, INPUT);
   attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
 

@@ -19,11 +19,13 @@ const char *ssid = STASSID;
 const char *password = STAPSK;
 
 #define SENSORINPUT 0             ///< pin number for digital sensor input
+#ifdef analog
 #define SENSORANALOG A0           ///< pin number for analog sensor input
 #define MAXSAMPLES 32             ///< array size for analog samples
 int sensorValues[MAXSAMPLES];     ///< Array to store samples from analog input pin
 int sensorValueIndex = 0;         ///< array index pointing to the next free element
 int postTrigger = MAXSAMPLES / 2; ///< number of post trigger samples
+#endif
 
 bool sampleStarted = false;       ///< signal to start sampling analog signal, set after sending data
 #define TIMER_INTERVAL_MS 10      ///< sampling timer interval
@@ -61,10 +63,10 @@ unsigned long actDuration = 0;      ///< dynamically calculated duration
                                     */
 
 unsigned long lastChangeTime = 0;   ///< absolute timestamp of the last rising edge of the sensor pulse
-unsigned int impulsesPerLiter = 16; ///< number of impulses per Liter
+unsigned int impulsesPerLiter = 46; ///< number of impulses per Liter
 float flowRate = 0.0;               ///< flow rate calculated from \p impulsesPerLiter and \p lastDuration in l/s
 float flowRateFiltered = 0.0;       ///< filter to show decay even without input pulse
-float filter = 0.9;                 ///< filter value (always < 1)
+float filter = 0.5;                 ///< filter value (always < 1)
 
 /**
 * @brief Interrupt routine for external Sensor input
@@ -80,13 +82,11 @@ void IRAM_ATTR measureSensor()
   auto actTime = millis();
   lastDuration = actTime - lastChangeTime;
   lastChangeTime = actTime;
-  flowRate = (float)impulsesPerLiter / (float)lastDuration * 1000.0;
+  flowRate = 1/(float)impulsesPerLiter / (float)lastDuration * 1000.0;
   waterCounter++;
-#ifdef debug
-  sensorValues[sensorValueIndex-1] = -1;
-#endif
 }
 
+#ifdef analog
 /**
  * @brief high speed sampling of analog signal \n 
  * timer interrupt based sampling of the analog input value
@@ -107,6 +107,7 @@ void IRAM_ATTR sampleAnalogSignal()
     if (postTrigger != 0) postTrigger--;
   }
 }
+#endif
 
 /**
  * @brief Arduino setup function
@@ -118,8 +119,7 @@ void setup()
   unsigned long actTime = millis();
   nextUpdateTime = actTime + UpdateIntervall;
   lastChangeTime = actTime;
-  sensorValueIndex = 0;
-
+  
   //initialize serial port for debug
   Serial.begin(115200);
   Serial.println("Booting");
@@ -130,13 +130,14 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(SENSORINPUT), measureSensor, RISING);
 
   // attach timer interrupt for high speed analog signal sampling
+  #ifdef analog
   if (ITimer.attachInterruptInterval(TIMER_INTERVAL_MS * 1000, sampleAnalogSignal))
   {
     Serial.println(F("Starting  ITimer OK")); 
   }
   else
     Serial.println(F("Can't set ITimer correctly. Select another freq. or interval"));
-
+#endif
 
   // initialize MQTT client
 #ifdef debug
@@ -195,6 +196,7 @@ bool sendNewData(uint64_t osTimeMS)
   // send message to #sensors topic 
   if (!MQTTClient.publish("sensors", message)) sendOK = false;
 
+#ifdef analog
   //check if analog sampling is finished
   if (sampleStarted == false) {
     // calculate accurate timestampe of pulse
@@ -225,6 +227,7 @@ bool sendNewData(uint64_t osTimeMS)
     sampleStarted = true;
     postTrigger = MAXSAMPLES / 2;
   }
+#endif
 
   return sendOK;
 }

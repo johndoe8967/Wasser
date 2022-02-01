@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "memory": "cpp"
+    },
+    "spellright.language": [
+        "de",
+        "en"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext",
+        "cpp"
+    ],
+    "doxygen_runner.configuration_file_override": "${workspaceFolder}/doxyfile",
+
+}
